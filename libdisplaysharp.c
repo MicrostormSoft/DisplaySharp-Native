@@ -37,7 +37,7 @@ static void write_color(struct buffer_object *bo,unsigned int color)
 	int i;
 	
 	pt = bo->vaddr;
-	for (i = 0; i < (bo->size / 4); i++){
+	for (i = 0; i < (bo->size / 4); i+=4){
 		*pt = color;
 		pt++;
 	}	
@@ -49,7 +49,7 @@ static void write_color_area(struct buffer_object *bo,unsigned int start,unsigne
 	unsigned int *pt;
 	int i;
 	
-	for (i = start; i < end; i++){
+	for (i = start; i < end; i+=4){
         pt = bo->vaddr + i;
 		*pt = color;
 	}
@@ -158,7 +158,7 @@ void sc_close(){
 	close(fd);
 }
 
-static void draw_line(struct buffer_object *bo,unsigned int x1,unsigned int y1,unsigned int x2,unsigned int y2,unsigned int color){
+void draw_line(struct buffer_object *bo,unsigned int x1,unsigned int y1,unsigned int x2,unsigned int y2,unsigned int color){
     if(x1>x2){
         int tmp = x2;
         x2=x1;
@@ -184,14 +184,14 @@ static void draw_line(struct buffer_object *bo,unsigned int x1,unsigned int y1,u
     }
 }
 
-static void draw_rectangle(struct buffer_object *bo,unsigned int x1,unsigned int y1,unsigned int x2,unsigned int y2,unsigned int color){
+void draw_rectangle(struct buffer_object *bo,unsigned int x1,unsigned int y1,unsigned int x2,unsigned int y2,unsigned int color){
     draw_line(bo,x1,y1,x2,y1,color);
     draw_line(bo,x1,y1,x1,y2,color);
     draw_line(bo,x1,y2,x2,y2,color);
     draw_line(bo,x2,y1,x2,y2,color);
 }
 
-static void fill_rectangle(struct buffer_object *bo,unsigned int x1,unsigned int y1,unsigned int x2,unsigned int y2,unsigned int color){
+void fill_rectangle(struct buffer_object *bo,unsigned int x1,unsigned int y1,unsigned int x2,unsigned int y2,unsigned int color){
     for(int y=y1;y<y2;y++){
         int start = get_offset(bo,x1,y);
         int end = get_offset(bo,x2,y);
@@ -199,7 +199,7 @@ static void fill_rectangle(struct buffer_object *bo,unsigned int x1,unsigned int
     }
 }
 
-static void draw_circle(struct buffer_object *bo,unsigned int x,unsigned y,unsigned r,int color){
+void draw_circle(struct buffer_object *bo,unsigned int x,unsigned y,unsigned r,int color){
     int starty = y-r<0 ? 0:y-r;
     int endy = y+r>bo->height?bo->height:y+r;
     for(int i=starty;i<endy;i++){
@@ -219,7 +219,7 @@ static void draw_circle(struct buffer_object *bo,unsigned int x,unsigned y,unsig
     }
 }
 
-static void fill_circle(struct buffer_object *bo,unsigned int x,unsigned y,unsigned r,int color){
+void fill_circle(struct buffer_object *bo,unsigned int x,unsigned y,unsigned r,int color){
     int starty = y-r<0 ? 0:y-r;
     int endy = y+r>bo->height?bo->height:y+r;
     for(int i=starty;i<endy;i++){
@@ -232,17 +232,17 @@ static void fill_circle(struct buffer_object *bo,unsigned int x,unsigned y,unsig
     }
 }
 
-static void fill_bitmap(struct buffer_object *bo,uint8_t *bitmap){
+void fill_bitmap(struct buffer_object *bo,uint8_t *bitmap,uint size){
     unsigned int *pt;
     pt = bo->vaddr;
-    *pt = *bitmap;
+    memcpy(pt,bitmap,size);
 }
 
-static uint32_t width(struct buffer_object *bo){
+uint32_t width(struct buffer_object *bo){
     return bo->width;
 }
 
-static uint32_t height(struct buffer_object *bo){
+uint32_t height(struct buffer_object *bo){
     return bo->height;
 }
 
