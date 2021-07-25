@@ -238,6 +238,14 @@ static void fill_bitmap(struct buffer_object *bo,uint8_t *bitmap){
     *pt = *bitmap;
 }
 
+static uint32_t width(struct buffer_object *bo){
+    return bo->width;
+}
+
+static uint32_t height(struct buffer_object *bo){
+    return bo->height;
+}
+
 void main(){
     struct buffer_object *b = init("/dev/dri/card0");
     fill_rectangle(b,25,25,100,100,0x00ffffff);
