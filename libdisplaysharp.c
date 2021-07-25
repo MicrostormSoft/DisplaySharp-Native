@@ -31,17 +31,16 @@ uint32_t conn_id;
 uint32_t crtc_id;
 unsigned int *mem;
 
-static void write_color(struct buffer_object *bo,unsigned int color)
+void background(struct buffer_object *bo,unsigned int color)
 {
 	unsigned int *pt;
 	int i;
 	
 	pt = bo->vaddr;
-	for (i = 0; i < (bo->size / 4); i+=4){
+	for (i = 0; i < (bo->size / 4); i++){
 		*pt = color;
 		pt++;
-	}	
-	
+	}
 }
 
 static void write_color_area(struct buffer_object *bo,unsigned int start,unsigned int end,unsigned int color)
@@ -60,8 +59,9 @@ static unsigned int get_offset(struct buffer_object *bo,int x,int y){
     return (linelen*y) + (x*4);
 }
 
-static void draw_pixel(struct buffer_object *bo,unsigned int x,unsigned int y,unsigned int color)
+void draw_pixel(struct buffer_object *bo,unsigned int x,unsigned int y,unsigned int color)
 {
+    if(x>bo->width || y>bo->height)return;
 	unsigned int *pt;
 	int i;
 	
@@ -133,7 +133,7 @@ static void modeset_destroy_fb(int fd, struct buffer_object *bo)
 struct buffer_object *init(char *dev)
 {
 	fd = open(dev, O_RDWR | O_CLOEXEC);
-
+    if(fd<=0) return NULL;
 	res = drmModeGetResources(fd);
 	crtc_id = res->crtcs[0];
 	conn_id = res->connectors[0];
@@ -159,26 +159,52 @@ void sc_close(){
 }
 
 void draw_line(struct buffer_object *bo,unsigned int x1,unsigned int y1,unsigned int x2,unsigned int y2,unsigned int color){
-    if(x1>x2){
-        int tmp = x2;
-        x2=x1;
-        x1=tmp;
-        
-        tmp = y2;
-        y2=y1;
-        y1=tmp;
-    }
+    int tmp;
     if(x2==x1){
+        if(y1>y2){
+            tmp = x2;
+            x2=x1;
+            x1=tmp;
+            
+            tmp = y2;
+            y2=y1;
+            y1=tmp;
+        }
         for(int y=y1;y<y2;y++){
             draw_pixel(bo,x1,y,color);
         }
     }
     else
     {
+        if(x1>x2){
+            tmp = x2;
+            x2=x1;
+            x1=tmp;
+            
+            tmp = y2;
+            y2=y1;
+            y1=tmp;
+        }
         double k= ((double)(y2-y1)) / (x2-x1);
         for(int dx=0;dx<(x2-x1);dx++){
             int x = x1+dx;
             int y = y1+(int)(dx*k);
+            draw_pixel(bo,x,y,color);
+        }
+
+        if(y1>y2){
+            tmp = x2;
+            x2=x1;
+            x1=tmp;
+            
+            tmp = y2;
+            y2=y1;
+            y1=tmp;
+        }
+        k = 1.0/k;
+        for(int dy=0;dy<(y2-y1);dy++){
+            int y = y1+dy;
+            int x = x1+(int)(dy*k);
             draw_pixel(bo,x,y,color);
         }
     }
@@ -202,20 +228,15 @@ void fill_rectangle(struct buffer_object *bo,unsigned int x1,unsigned int y1,uns
 void draw_circle(struct buffer_object *bo,unsigned int x,unsigned y,unsigned r,int color){
     int starty = y-r<0 ? 0:y-r;
     int endy = y+r>bo->height?bo->height:y+r;
-    for(int i=starty;i<endy;i++){
+
+    int ldx=0;
+
+    for(int i=starty;i<=endy;i++){
         int dy = y-i;
-        if(abs(dy)>=r)break;
         int dx = sqrt((r*r)-(dy*dy));
-        if(abs(dy)+1 >= r)
-        {
-            draw_pixel(bo,x+dx,i,color);
-            draw_pixel(bo,x-dx,i,color);
-        }else{
-            int dy1=dy+1;
-            int dx1 = sqrt((r*r)-(dy1*dy1));
-            draw_line(bo,x+dx,i,x+dx1,i+1,color);
-            draw_line(bo,x-dx,i,x-dx1,i+1,color);
-        }
+        draw_line(bo,x+dx,i,x+ldx,i-1,color);
+        draw_line(bo,x-dx,i,x-ldx,i-1,color);
+        ldx = dx;
     }
 }
 
@@ -224,7 +245,7 @@ void fill_circle(struct buffer_object *bo,unsigned int x,unsigned y,unsigned r,i
     int endy = y+r>bo->height?bo->height:y+r;
     for(int i=starty;i<endy;i++){
         int dy = y-i;
-        if(abs(dy)>=r)break;
+        if(abs(dy)>r)break;
         int dx = sqrt((r*r)-(dy*dy));
         int start = get_offset(bo,x-dx,i);
         int end = get_offset(bo,x+dx,i);
