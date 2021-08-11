@@ -259,6 +259,21 @@ void fill_bitmap(struct buffer_object *bo,uint8_t *bitmap,uint size){
     memcpy(pt,bitmap,size);
 }
 
+void fill_bitmap_area(struct buffer_object *bo,uint8_t *bitmap,uint x1,uint y1,uint x2,uint y2)
+{
+	unsigned int *pt;
+    int start,end,size;
+	int i=0;
+	for(int y=y1;y<y2;y++){
+        start = get_offset(bo,x1,y);
+        end = get_offset(bo,x2,y);
+        pt = bo->vaddr + start;
+        size = end-start;
+        memcpy(pt,bitmap,size);
+        i+=size;
+    }
+}
+
 uint32_t width(struct buffer_object *bo){
     return bo->width;
 }
